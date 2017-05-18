@@ -1,5 +1,0 @@
-host: database.bluetent.dev
-port: 3306
-user: loguser
-pass: logpass
-database: logdb

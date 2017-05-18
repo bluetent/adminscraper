@@ -1,96 +1,41 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"github.com/joho/godotenv"
+	"github.com/urfave/negroni"
 	"log"
 	"net/http"
 	"os"
 )
 
-var database *sql.DB
-
 func main() {
-	config := readConfig()
+	readConfig()
 	log.SetOutput(os.Stderr)
 
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
-		config.User,
-		config.Pass,
-		config.Host,
-		config.Port,
-		config.Database,
-	))
+	initializeDatabase()
 
-	if err != nil {
-		log.Panic("Error in MySQL parameters")
-		log.Panic(err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		log.Panic("Error opening MySQL connection")
-		log.Panic(err)
-	}
-	database = db
-	defer database.Close()
-
-	maybeSetupDatabase()
-
-	http.HandleFunc("/", logHit)
+	handler := initializeHandler()
 	port := getenv("PORT", "8000")
 	log.Printf("Serving on port %s", port)
-	http.ListenAndServe(":"+port, nil)
+	http.ListenAndServe(":"+port, handler)
 }
 
-type config struct {
-	Host     string
-	Port     string
-	User     string
-	Pass     string
-	Database string
+func initializeHandler() http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", logHit)
+
+	n := negroni.Classic()
+	n.UseHandler(mux)
+	return n
 }
 
-func readConfig() (cfg config) {
-	data, err := ioutil.ReadFile("config.yml")
+func readConfig() {
+	err := godotenv.Load()
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = yaml.Unmarshal(data, &cfg)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return cfg
-}
-
-func maybeSetupDatabase() {
-	stmt, err := database.Prepare(`CREATE TABLE IF NOT EXISTS ` + "`requests`" + ` (
-		` + "`ID`" + ` int(11) NOT NULL AUTO_INCREMENT,
-		` + "`domain`" + ` varchar(255) NOT NULL,
-		` + "`path`" + ` varchar(255) NOT NULL,
-		` + "`user`" + ` varchar(255) NOT NULL,
-		` + "`address`" + ` varchar(255) NOT NULL,
-		` + "`created`" + ` time NOT NULL,
-		PRIMARY KEY (` + "`ID`" + `)
-	) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3;`)
-
-	if err != nil {
-		log.Panic("Error preparing table create statement")
-		log.Panic(err)
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec()
-	if err != nil {
-		log.Panic("Error creating table")
-		log.Panic(err)
+		log.Fatal("Error loading environment")
 	}
 }
 
