@@ -94,11 +94,24 @@ func maybeSetupDatabase() {
 	}
 }
 
+func sendHeaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Access-Control-Allow-Origin")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+}
+
 func logHit(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method == "OPTIONS" {
+		sendHeaders(w)
+		return
+	}
+
 	if r.Method != "POST" {
 		fmt.Fprint(w, "Invalid request.")
 		return
 	}
+
+	sendHeaders(w)
 
 	r.ParseForm()
 	domain := r.FormValue("domain")
