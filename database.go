@@ -64,3 +64,27 @@ func maybeCreateTable() {
 		log.Panic(err)
 	}
 }
+
+func executeStatement(stmt *sql.Stmt, args ...interface{}) error {
+	defer stmt.Close()
+	res, err := stmt.Exec(args...)
+	if err != nil {
+		log.Panic("Error executing insert statement")
+		return err
+	}
+
+	lastId, err := res.LastInsertId()
+	if err != nil {
+		log.Panic("Error getting ID")
+		return err
+	}
+
+	rowCnt, err := res.RowsAffected()
+	if err != nil {
+		log.Panic("Error getting row count.")
+		return err
+	}
+	log.Printf("ID = %d, affected = %d\n", lastId, rowCnt)
+
+	return nil
+}

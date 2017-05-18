@@ -43,9 +43,9 @@ func readConfig() {
 }
 
 func addCORSHeaders(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	next(w, r)
 	w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Access-Control-Allow-Origin")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	next(w, r)
 }
 
 func respondOptions(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -84,28 +84,15 @@ func logHit(w http.ResponseWriter, r *http.Request) {
 		log.Panic("Error preparing insert statement")
 		log.Panic(err)
 	}
-	defer stmt.Close()
 
-	res, err := stmt.Exec(domain, path, user, timezone, address)
+	err = executeStatement(stmt, domain, path, user, timezone, address)
+
 	if err != nil {
-		log.Panic("Error executing insert statement")
 		log.Panic(err)
+		return
 	}
 
-	lastId, err := res.LastInsertId()
-	if err != nil {
-		log.Panic("Error getting ID")
-		log.Panic(err)
-	}
-
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		log.Panic("Error getting row count.")
-		log.Panic(err)
-	}
-	log.Printf("ID = %d, affected = %d\n", lastId, rowCnt)
-
-	fmt.Fprintf(w, "Logged: %s, %s, %s, %s, %s", domain, path, user, timezone, address)
+	fmt.Fprintf(w, "Logged: %v+", domain, path, user, timezone, address)
 }
 
 func getenv(key, fallback string) string {
