@@ -76,6 +76,7 @@ func maybeSetupDatabase() {
 		` + "`domain`" + ` varchar(255) NOT NULL,
 		` + "`path`" + ` varchar(255) NOT NULL,
 		` + "`user`" + ` varchar(255) NOT NULL,
+		` + "`timezone`" + ` varchar(255) NOT NULL,
 		` + "`address`" + ` varchar(255) NOT NULL,
 		` + "`created`" + ` time NOT NULL,
 		PRIMARY KEY (` + "`ID`" + `)
@@ -117,16 +118,17 @@ func logHit(w http.ResponseWriter, r *http.Request) {
 	domain := r.FormValue("domain")
 	path := r.FormValue("path")
 	user := r.FormValue("user")
+	timezone := r.FormValue("timezone")
 	address := r.RemoteAddr
 
-	stmt, err := database.Prepare("INSERT INTO requests SET domain=?, path=?, user=?, address=?, created=NOW()")
+	stmt, err := database.Prepare("INSERT INTO requests SET domain=?, path=?, user=?, timezone=?, address=?, created=NOW()")
 	if err != nil {
 		log.Panic("Error preparing insert statement")
 		log.Panic(err)
 	}
 	defer stmt.Close()
 
-	res, err := stmt.Exec(domain, path, user, address)
+	res, err := stmt.Exec(domain, path, user, timezone, address)
 	if err != nil {
 		log.Panic("Error executing insert statement")
 		log.Panic(err)
@@ -145,7 +147,7 @@ func logHit(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("ID = %d, affected = %d\n", lastId, rowCnt)
 
-	fmt.Fprintf(w, "Logged: %s, %s, %s, %s", domain, path, user, address)
+	fmt.Fprintf(w, "Logged: %s, %s, %s, %s, %s", domain, path, user, timezone, address)
 }
 
 func getenv(key, fallback string) string {
