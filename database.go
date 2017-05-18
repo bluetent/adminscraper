@@ -31,7 +31,6 @@ func initializeDatabase() {
 		log.Panic(err)
 	}
 	database = db
-	defer database.Close()
 
 	maybeCreateTable()
 }
@@ -47,6 +46,7 @@ func maybeCreateTable() {
 		` + "`domain`" + ` varchar(255) NOT NULL,
 		` + "`path`" + ` varchar(255) NOT NULL,
 		` + "`user`" + ` varchar(255) NOT NULL,
+		` + "`timezone`" + ` varchar(255) NOT NULL,
 		` + "`address`" + ` varchar(255) NOT NULL,
 		` + "`created`" + ` time NOT NULL,
 		PRIMARY KEY (` + "`ID`" + `)
