@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/urfave/negroni"
+	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net/http"
 	"os"
@@ -16,9 +18,44 @@ func main() {
 	defer database.Close()
 
 	handler := initializeHandler()
-	port := getenv("PORT", "8000")
-	log.Printf("Serving on port %s", port)
-	http.ListenAndServe(":"+port, handler)
+	port := getenv("PORT", "80")
+	httpsPort := getenv("HTTPSPORT", "443")
+	domain := getenv("DOMAIN", "gollector.bluetent.com")
+
+	log.Printf("Serving HTTP at %s:%s", domain, port)
+	go http.ListenAndServe(":"+port, http.HandlerFunc(redirectToHTTPS))
+
+	log.Printf("Serving HTTPS at %s:%s", domain, httpsPort)
+
+	certManager := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(domain),
+		Cache:      autocert.DirCache("certs"),
+	}
+
+	server := &http.Server{
+		Addr: ":" + httpsPort,
+		TLSConfig: &tls.Config{
+			GetCertificate: certManager.GetCertificate,
+		},
+		Handler: handler,
+	}
+
+	server.ListenAndServeTLS("", "")
+}
+
+// redirectToHTTPS sends the request on to the https:// version of the URL.
+// Snagged from https://gist.github.com/d-schmidt/587ceec34ce1334a5e60
+func redirectToHTTPS(w http.ResponseWriter, req *http.Request) {
+	// remove/add not default ports from req.Host
+	target := "https://" + req.Host + req.URL.Path
+	if len(req.URL.RawQuery) > 0 {
+		target += "?" + req.URL.RawQuery
+	}
+	log.Printf("redirect to: %s", target)
+	http.Redirect(w, req, target,
+		// see @andreiavrammsd comment: often 307 > 301
+		http.StatusTemporaryRedirect)
 }
 
 func initializeHandler() http.Handler {
